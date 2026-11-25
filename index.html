@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Narrador Studio</title>
+<meta name="description" content="Estúdio independente de narração: gere voz com ElevenLabs ou importe seus próprios áudios.">
+<style>
+:root{--bg:#0b1020;--panel:#131b2d;--panel2:#1a2438;--line:#293650;--text:#eef3ff;--muted:#9eabc2;--accent:#7c5cff;--accent2:#22c6a7;--danger:#ff6b78}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#18223d 0,#0b1020 48%);color:var(--text);font:15px/1.5 Inter,system-ui,Segoe UI,Arial}
+.wrap{max-width:1120px;margin:auto;padding:28px 18px 56px}.header{display:flex;align-items:center;gap:14px;margin-bottom:24px}.logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,var(--accent),#25c7a8);display:grid;place-items:center;font-size:23px}.header h1{font-size:25px;margin:0}.header p{margin:2px 0;color:var(--muted)}
+.layout{display:grid;grid-template-columns:1.35fr .85fr;gap:18px}.panel{background:rgba(19,27,45,.92);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 12px 40px #0002}.panel h2{margin:0 0 16px;font-size:17px}.label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}input,select,textarea{width:100%;border:1px solid var(--line);background:#0e1627;color:var(--text);border-radius:10px;padding:11px 12px;font:inherit;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--accent)}textarea{min-height:230px;resize:vertical;line-height:1.65}button{border:0;border-radius:11px;padding:11px 15px;font:600 14px inherit;cursor:pointer;color:white;background:var(--accent)}button:hover{filter:brightness(1.1)}button:disabled{opacity:.55;cursor:wait}.secondary{background:var(--panel2);border:1px solid var(--line)}.green{background:var(--accent2);color:#061b17}.danger{background:#40212b;color:#ffb3bc;border:1px solid #713442}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}.row .tight{flex:0 0 auto}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.small{font-size:12px;color:var(--muted)}.count{display:flex;justify-content:space-between;margin-top:6px}.controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.status{min-height:22px;margin-top:10px;color:var(--muted);font-size:13px}.status.error{color:var(--danger)}.status.ok{color:var(--accent2)}.audioBox{border:1px dashed var(--line);padding:16px;border-radius:13px;margin-top:12px}.audioBox audio{width:100%;margin-top:8px}.library{display:flex;flex-direction:column;gap:10px}.item{background:#0e1627;border:1px solid var(--line);padding:12px;border-radius:12px}.item strong{display:block;overflow-wrap:anywhere}.item .row{margin-top:8px}.item button{font-size:12px;padding:8px 10px}.drop{padding:20px;border:1px dashed #465879;border-radius:13px;text-align:center;background:#0e1627}.drop input{margin-top:10px}.note{padding:12px;border-radius:12px;background:#282340;color:#c8c1ff;font-size:12px;margin-top:14px}.footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:800px){.layout{grid-template-columns:1fr}.wrap{padding:18px 12px}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="wrap">
+<header class="header"><div class="logo">🎙️</div><div><h1>Narrador Studio</h1><p>Gere narrações ou importe áudio externo — tudo em um só lugar.</p></div></header>
+<div class="layout">
+<section class="panel">
+<h2>Gerar narração com ElevenLabs</h2>
+<label class="label" for="key">Chave API ElevenLabs</label><input id="key" type="password" autocomplete="off" placeholder="Cole sua chave API aqui (não é salva)">
+<div class="row" style="margin-top:8px"><button class="secondary" id="loadVoices">Buscar vozes da conta</button><span class="small" id="voiceStatus">A chave fica somente nesta sessão.</span></div>
+<div class="two"><div><label class="label">Voz</label><select id="voice"><option value="">Busque as vozes primeiro</option></select></div><div><label class="label">Modelo</label><select id="model"><option value="eleven_multilingual_v2">Multilingual v2 (natural)</option><option value="eleven_v3">Eleven v3 (expressivo/tags)</option><option value="eleven_flash_v2_5">Flash v2.5 (rápido)</option></select></div></div>
+<label class="label" for="text">Texto para narrar</label><textarea id="text" placeholder="Digite ou cole seu texto aqui. No modelo v3, você pode experimentar tags como [whispers], [excited], [sad], [laughs]..."></textarea>
+<div class="count"><span class="small">Dica: tags expressivas são melhor suportadas no modelo v3.</span><span class="small" id="count">0 caracteres</span></div>
+<div class="two"><div><label class="label">Estabilidade</label><input id="stability" type="range" min="0" max="1" step="0.05" value="0.5"></div><div><label class="label">Similaridade</label><input id="similarity" type="range" min="0" max="1" step="0.05" value="0.75"></div></div>
+<div class="controls"><button id="generate">✨ Gerar áudio</button><button id="clear" class="secondary">Limpar texto</button></div>
+<div class="status" id="status"></div><div id="generated"></div>
+<div class="note">Privacidade: sua chave não é gravada no projeto nem enviada ao GitHub. Ela é usada no navegador para autenticar as chamadas à ElevenLabs. Use somente em dispositivo confiável e evite publicar o app com sua chave preenchida.</div>
+</section>
+<section class="panel">
+<h2>Áudios externos</h2><div class="drop"><strong>Importe gravações ou narrações</strong><p class="small">MP3, WAV, M4A, OGG e outros formatos suportados pelo navegador.</p><input id="files" type="file" accept="audio/*" multiple></div>
+<div class="status" id="importStatus"></div><h2 style="margin-top:22px">Minha biblioteca <span class="small" id="libCount"></span></h2><div class="library" id="library"><p class="small">Nenhum áudio importado ainda.</p></div>
+</section>
+</div><div class="footer">Narrador Studio • projeto independente • os áudios importados são usados localmente no navegador</div></div>
+<script>
+const $=id=>document.getElementById(id);
+let audioLibrary=[], currentBlob=null, currentUrl=null, voices=[];
+function setStatus(msg,type=""){const el=$("status");el.textContent=msg;el.className="status "+type}
+function setImport(msg,type=""){const el=$("importStatus");el.textContent=msg;el.className="status "+type}
+$("text").addEventListener("input",()=>$("count").textContent=$("text").value.length.toLocaleString("pt-BR")+" caracteres");
+$("loadVoices").onclick=async()=>{
+ const key=$("key").value.trim();if(!key){$("voiceStatus").textContent="Informe sua chave API.";return}
+ $("loadVoices").disabled=true;$("voiceStatus").textContent="Buscando vozes…";
+ try{const r=await fetch("https://api.elevenlabs.io/v1/voices",{headers:{"xi-api-key":key}});if(!r.ok)throw new Error(await errText(r));
+ const data=await r.json();voices=data.voices||[];$("voice").innerHTML="";
+ voices.forEach(v=>{const o=document.createElement("option");o.value=v.voice_id;o.textContent=v.name+(v.category?" · "+v.category:"");$("voice").appendChild(o)});
+ $("voiceStatus").textContent=voices.length+" vozes carregadas.";
+ }catch(e){$("voiceStatus").textContent=e.message;$("voiceStatus").style.color="#ff6b78"}finally{$("loadVoices").disabled=false}
+};
+async function errText(r){let t=await r.text();try{let j=JSON.parse(t);return j.detail?.message||j.detail||j.message||t}catch{return t||"Erro HTTP "+r.status}}
+$("generate").onclick=async()=>{
+ const key=$("key").value.trim(),voice=$("voice").value,text=$("text").value.trim(),model=$("model").value;
+ if(!key)return setStatus("Digite a chave API primeiro.","error");
+ if(!voice)return setStatus("Escolha uma voz (busque vozes antes).","error");
+ if(!text)return setStatus("Digite o texto para narrar.","error");
+ $("generate").disabled=true;setStatus("Gerando áudio… aguarde.");
+ try{
+  const url="https://api.elevenlabs.io/v1/text-to-speech/"+encodeURIComponent(voice)+"?output_format=mp3_44100_128";
+  const payload={text,model_id:model,voice_settings:{stability:Number($("stability").value),similarity_boost:Number($("similarity").value),style:0,use_speaker_boost:true}};
+  const r=await fetch(url,{method:"POST",headers:{"xi-api-key":key,"Content-Type":"application/json","Accept":"audio/mpeg"},body:JSON.stringify(payload)});
+  if(!r.ok)throw new Error(await errText(r));
+  currentBlob=await r.blob();if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=URL.createObjectURL(currentBlob);
+  const box=$("generated");box.innerHTML="";const div=document.createElement("div");div.className="audioBox";div.innerHTML="<strong>Áudio gerado</strong><audio controls></audio><div class='controls'><button class='green' id='downloadGenerated'>⬇ Baixar MP3</button><button class='secondary' id='addGenerated'>Adicionar à biblioteca</button></div>";
+  div.querySelector("audio").src=currentUrl;box.appendChild(div);
+  $("downloadGenerated").onclick=()=>downloadBlob(currentBlob,"narracao-"+stamp()+".mp3");
+  $("addGenerated").onclick=()=>{addToLibrary({name:"Narração "+new Date().toLocaleString("pt-BR"),blob:currentBlob,type:"audio/mpeg",generated:true});setStatus("Áudio adicionado à biblioteca.","ok")};
+  setStatus("Narração concluída! Ouça ou baixe o MP3.","ok");
+ }catch(e){setStatus("Falha: "+e.message,"error")}finally{$("generate").disabled=false}
+};
+$("clear").onclick=()=>{$("text").value="";$("count").textContent="0 caracteres";setStatus("")};
+$("files").onchange=e=>{const files=[...e.target.files];files.forEach(f=>{if(!f.type.startsWith("audio/"))return;addToLibrary({name:f.name,blob:f,type:f.type});});setImport(files.length+" arquivo(s) importado(s).","ok");e.target.value=""};
+function addToLibrary(a){audioLibrary.unshift({...a,id:crypto.randomUUID(),url:URL.createObjectURL(a.blob)});renderLibrary()}
+function renderLibrary(){const root=$("library");root.innerHTML="";$("libCount").textContent="("+audioLibrary.length+")";
+ if(!audioLibrary.length){root.innerHTML='<p class="small">Nenhum áudio importado ainda.</p>';return}
+ audioLibrary.forEach(a=>{const d=document.createElement("div");d.className="item";const title=document.createElement("strong");title.textContent=a.name;const audio=document.createElement("audio");audio.controls=true;audio.src=a.url;audio.style.width="100%";audio.style.marginTop="8px";const row=document.createElement("div");row.className="row";const dl=document.createElement("button");dl.className="green";dl.textContent="Baixar";dl.onclick=()=>downloadBlob(a.blob,a.name.replace(/[\\/:*?\"<>|]/g,"_"));const rm=document.createElement("button");rm.className="danger";rm.textContent="Remover";rm.onclick=()=>{URL.revokeObjectURL(a.url);audioLibrary=audioLibrary.filter(x=>x.id!==a.id);renderLibrary()};row.append(dl,rm);d.append(title,audio,row);root.appendChild(d)})
+}
+function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1200)}
+function stamp(){return new Date().toISOString().replace(/[:.]/g,"-")}
+</script></body></html>
