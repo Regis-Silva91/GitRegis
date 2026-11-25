@@ -15,11 +15,12 @@ Aplicativo independente para gerar narrações usando ElevenLabs e importar áud
 O projeto é uma página web estática. Abra `index.html` em um navegador moderno.
 
 ## Publicar com GitHub Pages
-1. Entre no repositório **GitRegis**.
-2. Abra **Settings → Pages**.
-3. Em **Build and deployment**, escolha **Deploy from a branch**.
-4. Branch: `main`; pasta: `/ (root)`; clique **Save**.
-5. Aguarde o GitHub Pages publicar o site. A URL aparecerá na mesma tela.
+O repositório está privado. No GitHub Free, o Pages para repositórios privados pode exigir mudança para público ou plano pago. **Não altere a visibilidade sem decidir conscientemente**, pois o código ficará público.
+
+1. Se aceitar deixar o código público, abra **Settings → General → Danger Zone → Change repository visibility** e escolha **Public**.
+2. Depois abra **Settings → Pages** e escolha **GitHub Actions** como fonte de publicação.
+3. O arquivo `.github/workflows/pages.yml` já está preparado. O GitHub executará a publicação após o próximo commit ou manualmente em **Actions**.
+4. Quando o fluxo terminar com sucesso, a URL aparecerá em **Settings → Pages**.
 
 ## Como usar
 1. Abra o site.
@@ -31,7 +32,7 @@ O projeto é uma página web estática. Abra `index.html` em um navegador modern
 
 ## Segurança
 - **Nunca** coloque sua chave API dentro de arquivos do repositório, em código ou screenshots.
-- A chave é digitada na página e enviada diretamente ao serviço ElevenLabs no navegador; não é persistida no site.
+- A chave é digitada na página e enviada diretamente ao serviço ElevenLabs no navegador; não é persistida no site. Ela pode ser inspecionada por extensões ou ferramentas do próprio navegador durante o uso; por isso, use uma chave limitada e não compartilhe o computador.
 - Se o navegador bloquear a conexão por CORS, a versão estática não poderá fazer a requisição. Nesse caso, será necessário adicionar um pequeno backend seguro (por exemplo, uma função serverless) para intermediar a API.
 - Publicar no GitHub Pages deixa o código do site publicamente acessível. Não publique uma chave, mesmo em repositório privado como medida de segurança.
 
