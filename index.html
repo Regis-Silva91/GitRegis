@@ -31,10 +31,10 @@
 <h2>Áudios externos</h2><div class="drop"><strong>Importe gravações ou narrações</strong><p class="small">MP3, WAV, M4A, OGG e outros formatos suportados pelo navegador.</p><input id="files" type="file" accept="audio/*" multiple></div>
 <div class="status" id="importStatus"></div><h2 style="margin-top:22px">Minha biblioteca <span class="small" id="libCount"></span></h2><div class="library" id="library"><p class="small">Nenhum áudio importado ainda.</p></div>
 </section>
-</div><div class="footer">Narrador Studio • projeto independente • os áudios importados são usados localmente no navegador</div></div>
+</div><div class="footer">Narrador Studio • projeto independente • biblioteca salva neste navegador e dispositivo (IndexedDB). Limpar os dados do navegador pode apagar os áudios.</div></div>
 <script>
 const $=id=>document.getElementById(id);
-let audioLibrary=[], currentBlob=null, currentUrl=null, voices=[];
+let audioLibrary=[], currentBlob=null, currentUrl=null, voices=[], libraryDB=null;
 function setStatus(msg,type=""){const el=$("status");el.textContent=msg;el.className="status "+type}
 function setImport(msg,type=""){const el=$("importStatus");el.textContent=msg;el.className="status "+type}
 $("text").addEventListener("input",()=>$("count").textContent=$("text").value.length.toLocaleString("pt-BR")+" caracteres");
@@ -63,17 +63,21 @@ $("generate").onclick=async()=>{
   const box=$("generated");box.innerHTML="";const div=document.createElement("div");div.className="audioBox";div.innerHTML="<strong>Áudio gerado</strong><audio controls></audio><div class='controls'><button class='green' id='downloadGenerated'>⬇ Baixar MP3</button><button class='secondary' id='addGenerated'>Adicionar à biblioteca</button></div>";
   div.querySelector("audio").src=currentUrl;box.appendChild(div);
   $("downloadGenerated").onclick=()=>downloadBlob(currentBlob,"narracao-"+stamp()+".mp3");
-  $("addGenerated").onclick=()=>{addToLibrary({name:"Narração "+new Date().toLocaleString("pt-BR"),blob:currentBlob,type:"audio/mpeg",generated:true});setStatus("Áudio adicionado à biblioteca.","ok")};
+  $("addGenerated").onclick=async()=>{try{await addToLibrary({name:"Narração "+new Date().toLocaleString("pt-BR"),blob:currentBlob,type:"audio/mpeg",generated:true});setStatus("Áudio salvo na biblioteca deste navegador.","ok")}catch(e){setStatus("Não foi possível salvar o áudio: "+e.message,"error")}};
   setStatus("Narração concluída! Ouça ou baixe o MP3.","ok");
  }catch(e){setStatus("Falha: "+e.message,"error")}finally{$("generate").disabled=false}
 };
 $("clear").onclick=()=>{$("text").value="";$("count").textContent="0 caracteres";setStatus("")};
-$("files").onchange=e=>{const files=[...e.target.files];files.forEach(f=>{if(!f.type.startsWith("audio/"))return;addToLibrary({name:f.name,blob:f,type:f.type});});setImport(files.length+" arquivo(s) importado(s).","ok");e.target.value=""};
-function addToLibrary(a){audioLibrary.unshift({...a,id:crypto.randomUUID(),url:URL.createObjectURL(a.blob)});renderLibrary()}
+$("files").onchange=async e=>{const files=[...e.target.files];let saved=0;try{for(const f of files){if(!f.type.startsWith("audio/"))continue;await addToLibrary({name:f.name,blob:f,type:f.type});saved++}setImport(saved+" arquivo(s) importado(s) e salvo(s) neste navegador.", "ok")}catch(err){setImport("Falha ao salvar: "+err.message,"error")}finally{e.target.value=""}};
+function openLibraryDB(){return new Promise((resolve,reject)=>{if(!("indexedDB" in window)){reject(new Error("Este navegador não oferece armazenamento local compatível."));return}const request=indexedDB.open("NarradorStudioDB",1);request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains("audios"))db.createObjectStore("audios",{keyPath:"id"})};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error("Não foi possível abrir o armazenamento local."))})}
+function dbRequest(mode,action,value){return new Promise((resolve,reject)=>{const tx=libraryDB.transaction("audios",mode),store=tx.objectStore("audios"),req=action==="getAll"?store.getAll():action==="put"?store.put(value):store.delete(value);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("Erro no armazenamento local."));tx.onabort=()=>reject(tx.error||new Error("Operação cancelada."))})}
+async function initLibrary(){try{libraryDB=await openLibraryDB();const saved=await dbRequest("readonly","getAll");saved.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));audioLibrary=saved.map(a=>({...a,url:URL.createObjectURL(a.blob)}));renderLibrary()}catch(e){setImport("Aviso: não foi possível ativar a memória permanente neste navegador. "+e.message,"error")}}
+async function addToLibrary(a){if(!libraryDB)throw new Error("O armazenamento local ainda não está pronto. Atualize a página e tente novamente.");const item={...a,id:crypto.randomUUID(),createdAt:Date.now()};await dbRequest("readwrite","put",item);audioLibrary.unshift({...item,url:URL.createObjectURL(item.blob)});renderLibrary()}
 function renderLibrary(){const root=$("library");root.innerHTML="";$("libCount").textContent="("+audioLibrary.length+")";
  if(!audioLibrary.length){root.innerHTML='<p class="small">Nenhum áudio importado ainda.</p>';return}
- audioLibrary.forEach(a=>{const d=document.createElement("div");d.className="item";const title=document.createElement("strong");title.textContent=a.name;const audio=document.createElement("audio");audio.controls=true;audio.src=a.url;audio.style.width="100%";audio.style.marginTop="8px";const row=document.createElement("div");row.className="row";const dl=document.createElement("button");dl.className="green";dl.textContent="Baixar";dl.onclick=()=>downloadBlob(a.blob,a.name.replace(/[\\/:*?\"<>|]/g,"_"));const rm=document.createElement("button");rm.className="danger";rm.textContent="Remover";rm.onclick=()=>{URL.revokeObjectURL(a.url);audioLibrary=audioLibrary.filter(x=>x.id!==a.id);renderLibrary()};row.append(dl,rm);d.append(title,audio,row);root.appendChild(d)})
+ audioLibrary.forEach(a=>{const d=document.createElement("div");d.className="item";const title=document.createElement("strong");title.textContent=a.name;const audio=document.createElement("audio");audio.controls=true;audio.src=a.url;audio.style.width="100%";audio.style.marginTop="8px";const row=document.createElement("div");row.className="row";const dl=document.createElement("button");dl.className="green";dl.textContent="Baixar";dl.onclick=()=>downloadBlob(a.blob,a.name.replace(/[\\/:*?\"<>|]/g,"_"));const rm=document.createElement("button");rm.className="danger";rm.textContent="Remover";rm.onclick=async()=>{try{await dbRequest("readwrite","delete",a.id);URL.revokeObjectURL(a.url);audioLibrary=audioLibrary.filter(x=>x.id!==a.id);renderLibrary();setImport("Áudio removido da biblioteca.","ok")}catch(e){setImport("Não foi possível remover o áudio: "+e.message,"error")}};row.append(dl,rm);d.append(title,audio,row);root.appendChild(d)})
 }
 function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1200)}
 function stamp(){return new Date().toISOString().replace(/[:.]/g,"-")}
+initLibrary();
 </script></body></html>
